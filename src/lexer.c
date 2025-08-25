@@ -340,12 +340,6 @@ static token_t lexer_scan_string(lexer_t* lexer) {
 
 // Main tokenization function
 token_t lexer_next_token(lexer_t* lexer) {
-    // Free previous token value if it exists
-    if (lexer->current_token.value) {
-        free(lexer->current_token.value);
-        lexer->current_token.value = NULL;
-    }
-    
     lexer_skip_whitespace(lexer);
     
     if (lexer_at_end(lexer)) {
