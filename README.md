@@ -1,6 +1,6 @@
 # TinyC Compiler
 
-![TinyC Logo](logo.svg)
+<img src="logo.svg" alt="TinyC Logo" width="50%"/>
 
 **A complete, educational C-like compiler built from scratch**
 
