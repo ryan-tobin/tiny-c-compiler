@@ -7,9 +7,9 @@ TEST_DIR = tests
 EXAMPLE_DIR = examples
 BUILD_DIR = build
 
-# Source files (lexer + parser + AST + semantic)
-SEMANTIC_SOURCES = $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c $(SRC_DIR)/semantic.c $(SRC_DIR)/main.c
-SEMANTIC_OBJECTS = $(SEMANTIC_SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+# Source files (complete compiler)
+COMPILER_SOURCES = $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c $(SRC_DIR)/semantic.c $(SRC_DIR)/codegen.c $(SRC_DIR)/main.c
+COMPILER_OBJECTS = $(COMPILER_SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Test files
 TEST_LEXER_SOURCES = $(TEST_DIR)/unit/test_lexer.c $(SRC_DIR)/lexer.c
@@ -21,7 +21,10 @@ TEST_PARSER_OBJECTS = $(BUILD_DIR)/tests/unit/test_parser.o $(BUILD_DIR)/lexer.o
 TEST_SEMANTIC_SOURCES = $(TEST_DIR)/unit/test_semantic.c $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c $(SRC_DIR)/semantic.c
 TEST_SEMANTIC_OBJECTS = $(BUILD_DIR)/tests/unit/test_semantic.o $(BUILD_DIR)/lexer.o $(BUILD_DIR)/ast.o $(BUILD_DIR)/parser.o $(BUILD_DIR)/semantic.o
 
-.PHONY: all clean test test-lexer test-parser test-semantic examples debug help
+TEST_CODEGEN_SOURCES = $(TEST_DIR)/unit/test_codegen.c $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c $(SRC_DIR)/semantic.c $(SRC_DIR)/codegen.c
+TEST_CODEGEN_OBJECTS = $(BUILD_DIR)/tests/unit/test_codegen.o $(BUILD_DIR)/lexer.o $(BUILD_DIR)/ast.o $(BUILD_DIR)/parser.o $(BUILD_DIR)/semantic.o $(BUILD_DIR)/codegen.o
+
+.PHONY: all clean test test-lexer test-parser test-semantic test-codegen examples debug help
 
 all: $(BUILD_DIR)/$(TARGET)
 
@@ -38,12 +41,12 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/tests/unit/%.o: $(TEST_DIR)/unit/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) -c $< -o $@
 
-# Link main executable (lexer + parser + semantic)
-$(BUILD_DIR)/$(TARGET): $(SEMANTIC_OBJECTS) | $(BUILD_DIR)
-	$(CC) $(SEMANTIC_OBJECTS) -o $@ $(LDFLAGS)
+# Link main executable (complete compiler)
+$(BUILD_DIR)/$(TARGET): $(COMPILER_OBJECTS) | $(BUILD_DIR)
+	$(CC) $(COMPILER_OBJECTS) -o $@ $(LDFLAGS)
 
 # Test targets
-test: test-lexer test-parser test-semantic
+test: test-lexer test-parser test-semantic test-codegen
 
 test-lexer: $(BUILD_DIR)/test_lexer
 	@echo "Running lexer unit tests..."
@@ -57,6 +60,10 @@ test-semantic: $(BUILD_DIR)/test_semantic
 	@echo "Running semantic analysis unit tests..."
 	./$(BUILD_DIR)/test_semantic
 
+test-codegen: $(BUILD_DIR)/test_codegen
+	@echo "Running code generation unit tests..."
+	./$(BUILD_DIR)/test_codegen
+
 $(BUILD_DIR)/test_lexer: $(TEST_LEXER_OBJECTS) | $(BUILD_DIR)
 	$(CC) $(TEST_LEXER_OBJECTS) -o $@ $(LDFLAGS)
 
@@ -64,7 +71,10 @@ $(BUILD_DIR)/test_parser: $(TEST_PARSER_OBJECTS) | $(BUILD_DIR)
 	$(CC) $(TEST_PARSER_OBJECTS) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/test_semantic: $(TEST_SEMANTIC_OBJECTS) | $(BUILD_DIR)
-	$(CC) $(TEST_SEMANTIC_OBJECTS) -o $@ $(LDFLAGS) $(LDFLAGS)
+	$(CC) $(TEST_SEMANTIC_OBJECTS) -o $@ $(LDFLAGS)
+
+$(BUILD_DIR)/test_codegen: $(TEST_CODEGEN_OBJECTS) | $(BUILD_DIR)
+	$(CC) $(TEST_CODEGEN_OBJECTS) -o $@ $(LDFLAGS) $(LDFLAGS)
 
 # Test with example programs
 examples: $(BUILD_DIR)/$(TARGET)
@@ -89,21 +99,24 @@ interactive: $(BUILD_DIR)/$(TARGET)
 # Help target
 help:
 	@echo "TinyC Compiler - Available targets:"
-	@echo "  all              - Build the compiler (full frontend)"
+	@echo "  all              - Build the complete compiler"
 	@echo "  test             - Run all unit tests"
 	@echo "  test-lexer       - Run lexer unit tests"
 	@echo "  test-parser      - Run parser unit tests"
 	@echo "  test-semantic    - Run semantic analysis unit tests"
-	@echo "  examples         - Test semantic analysis with example programs"
+	@echo "  test-codegen     - Run code generation unit tests"
+	@echo "  examples         - Test compiler with example programs"
+	@echo "  compile-examples - Compile examples to executables"
 	@echo "  debug            - Build with debug symbols and sanitizers"
 	@echo "  clean            - Remove build artifacts"
 	@echo "  help             - Show this help"
 	@echo ""
 	@echo "Usage examples:"
 	@echo "  make && ./build/tcc examples/hello_world.tc"
-	@echo "  make && ./build/tcc --debug-ast examples/hello_world.tc"
+	@echo "  make && ./build/tcc -o hello.s examples/hello_world.tc"
 	@echo "  make test"
 	@echo "  make examples"
+	@echo "  make compile-examples"
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -1,4 +1,3 @@
-// src/main.c (updated for parser testing)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,14 +5,17 @@
 #include "parser.h"
 #include "ast.h"
 #include "semantic.h"
+#include "codegen.h"
 
 void print_usage(const char* program_name) {
     printf("Usage: %s [options] <input_file>\n", program_name);
     printf("Options:\n");
-    printf("  --debug-tokens  Print token stream\n");
-    printf("  --debug-ast     Print AST\n");
-    printf("  --debug-symbols Print symbol table\n");
-    printf("  -h, --help      Show this help\n");
+    printf("  -o <file>         Output file (default: out.s)\n");
+    printf("  --debug-tokens    Print token stream\n");
+    printf("  --debug-ast       Print AST\n");
+    printf("  --debug-symbols   Print symbol table\n");
+    printf("  --compile-only    Generate assembly only (don't assemble)\n");
+    printf("  -h, --help        Show this help\n");
 }
 
 int main(int argc, char** argv) {
@@ -23,21 +25,27 @@ int main(int argc, char** argv) {
     }
     
     char* input_file = NULL;
+    char* output_file = "out.s";
     int debug_tokens = 0;
     int debug_ast = 0;
     int debug_symbols = 0;
+    int compile_only = 0;
     
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             return 0;
+        } else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+            output_file = argv[++i];
         } else if (strcmp(argv[i], "--debug-tokens") == 0) {
             debug_tokens = 1;
         } else if (strcmp(argv[i], "--debug-ast") == 0) {
             debug_ast = 1;
         } else if (strcmp(argv[i], "--debug-symbols") == 0) {
             debug_symbols = 1;
+        } else if (strcmp(argv[i], "--compile-only") == 0) {
+            compile_only = 1;
         } else if (argv[i][0] != '-') {
             input_file = argv[i];
         } else {
@@ -52,8 +60,13 @@ int main(int argc, char** argv) {
         return 1;
     }
     
-    printf("TinyC Compiler - Full Frontend Analysis\n");
-    printf("Processing file: %s\n\n", input_file);
+    printf("TinyC Compiler - Complete Pipeline\n");
+    printf("Processing file: %s\n", input_file);
+    if (compile_only) {
+        printf("Output: %s\n\n", output_file);
+    } else {
+        printf("Assembly: %s\n\n", output_file);
+    }
     
     // Phase 1: Lexical Analysis
     lexer_t* lexer = lexer_create_from_file(input_file);
@@ -115,27 +128,86 @@ int main(int argc, char** argv) {
         semantic_print_errors(analyzer);
         semantic_success = 0;
     } else {
-        printf("✓ Semantic analysis completed successfully!\n");
+        printf("✓ Semantic analysis completed successfully!\n\n");
+    }
+    
+    if (!semantic_success) {
+        semantic_destroy(analyzer);
+        ast_destroy(ast);
+        parser_destroy(parser);
+        lexer_destroy(lexer);
+        return 1;
     }
     
     if (debug_symbols) {
-        printf("\n=== SYMBOL TABLE DEBUG ===\n");
+        printf("=== SYMBOL TABLE DEBUG ===\n");
         printf("(Symbol table debugging not yet implemented)\n");
-        printf("==========================\n");
+        printf("==========================\n\n");
+    }
+    
+    // Phase 4: Code Generation
+    printf("=== CODE GENERATION ===\n");
+    codegen_t* codegen = codegen_create(output_file);
+    if (!codegen) {
+        fprintf(stderr, "Error: Could not create code generator\n");
+        semantic_destroy(analyzer);
+        ast_destroy(ast);
+        parser_destroy(parser);
+        lexer_destroy(lexer);
+        return 1;
+    }
+    
+    int codegen_success = codegen_generate(codegen, ast);
+    
+    if (codegen_success) {
+        printf("✓ Code generation completed successfully!\n");
+        printf("  Assembly written to: %s\n", output_file);
+    } else {
+        printf("✗ Code generation failed!\n");
     }
     
     // Cleanup
+    codegen_destroy(codegen);
     semantic_destroy(analyzer);
     ast_destroy(ast);
     parser_destroy(parser);
     lexer_destroy(lexer);
     
-    if (semantic_success) {
-        printf("\n✓ Frontend analysis completed successfully!\n");
-        printf("  Ready for code generation phase.\n");
-        return 0;
-    } else {
-        printf("\n✗ Frontend analysis failed.\n");
+    if (!codegen_success) {
         return 1;
     }
+    
+    // Phase 5: Assembly and Linking (optional)
+    if (!compile_only) {
+        printf("\n=== ASSEMBLY & LINKING ===\n");
+        
+        // Determine executable name
+        char* exe_name = malloc(strlen(input_file) + 10);
+        strcpy(exe_name, input_file);
+        char* dot = strrchr(exe_name, '.');
+        if (dot) *dot = '\0';
+        
+        // Assembly and link command
+        char link_cmd[512];
+        snprintf(link_cmd, sizeof(link_cmd), 
+                "gcc -m64 -no-pie %s runtime/runtime.c -o %s",
+                output_file, exe_name);
+        
+        printf("Running: %s\n", link_cmd);
+        int link_result = system(link_cmd);
+        
+        if (link_result == 0) {
+            printf("✓ Assembly and linking completed successfully!\n");
+            printf("  Executable created: %s\n", exe_name);
+            printf("\nRun your program with: ./%s\n", exe_name);
+        } else {
+            printf("✗ Assembly and linking failed!\n");
+            printf("  You can still use the assembly file: %s\n", output_file);
+        }
+        
+        free(exe_name);
+    }
+    
+    printf("\n✓ Compilation completed successfully!\n");
+    return 0;
 }
