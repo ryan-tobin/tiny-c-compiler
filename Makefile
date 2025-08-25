@@ -7,15 +7,18 @@ TEST_DIR = tests
 EXAMPLE_DIR = examples
 BUILD_DIR = build
 
-# Source files (only lexer for now)
-LEXER_SOURCES = $(SRC_DIR)/lexer.c $(SRC_DIR)/main.c
-LEXER_OBJECTS = $(LEXER_SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+# Source files (lexer + parser + AST)
+PARSER_SOURCES = $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c $(SRC_DIR)/main.c
+PARSER_OBJECTS = $(PARSER_SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Test files
 TEST_LEXER_SOURCES = $(TEST_DIR)/unit/test_lexer.c $(SRC_DIR)/lexer.c
 TEST_LEXER_OBJECTS = $(BUILD_DIR)/tests/unit/test_lexer.o $(BUILD_DIR)/lexer.o
 
-.PHONY: all clean test test-lexer examples debug help
+TEST_PARSER_SOURCES = $(TEST_DIR)/unit/test_parser.c $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c
+TEST_PARSER_OBJECTS = $(BUILD_DIR)/tests/unit/test_parser.o $(BUILD_DIR)/lexer.o $(BUILD_DIR)/ast.o $(BUILD_DIR)/parser.o
+
+.PHONY: all clean test test-lexer test-parser examples debug help
 
 all: $(BUILD_DIR)/$(TARGET)
 
@@ -32,19 +35,26 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/tests/unit/%.o: $(TEST_DIR)/unit/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) -c $< -o $@
 
-# Link main executable (lexer only for now)
-$(BUILD_DIR)/$(TARGET): $(LEXER_OBJECTS) | $(BUILD_DIR)
-	$(CC) $(LEXER_OBJECTS) -o $@ $(LDFLAGS)
+# Link main executable (lexer + parser)
+$(BUILD_DIR)/$(TARGET): $(PARSER_OBJECTS) | $(BUILD_DIR)
+	$(CC) $(PARSER_OBJECTS) -o $@ $(LDFLAGS)
 
 # Test targets
-test: test-lexer
+test: test-lexer test-parser
 
 test-lexer: $(BUILD_DIR)/test_lexer
 	@echo "Running lexer unit tests..."
 	./$(BUILD_DIR)/test_lexer
 
+test-parser: $(BUILD_DIR)/test_parser
+	@echo "Running parser unit tests..."
+	./$(BUILD_DIR)/test_parser
+
 $(BUILD_DIR)/test_lexer: $(TEST_LEXER_OBJECTS) | $(BUILD_DIR)
 	$(CC) $(TEST_LEXER_OBJECTS) -o $@ $(LDFLAGS)
+
+$(BUILD_DIR)/test_parser: $(TEST_PARSER_OBJECTS) | $(BUILD_DIR)
+	$(CC) $(TEST_PARSER_OBJECTS) -o $@ $(LDFLAGS)
 
 # Test with example programs
 examples: $(BUILD_DIR)/$(TARGET)
@@ -69,16 +79,18 @@ interactive: $(BUILD_DIR)/$(TARGET)
 # Help target
 help:
 	@echo "TinyC Compiler - Available targets:"
-	@echo "  all          - Build the compiler (lexer phase)"
+	@echo "  all          - Build the compiler (lexer + parser phase)"
 	@echo "  test         - Run all unit tests"
 	@echo "  test-lexer   - Run lexer unit tests"
-	@echo "  examples     - Test lexer with example programs"
+	@echo "  test-parser  - Run parser unit tests"
+	@echo "  examples     - Test parser with example programs"
 	@echo "  debug        - Build with debug symbols and sanitizers"
 	@echo "  clean        - Remove build artifacts"
 	@echo "  help         - Show this help"
 	@echo ""
 	@echo "Usage examples:"
 	@echo "  make && ./build/tcc examples/hello_world.tc"
+	@echo "  make && ./build/tcc --debug-ast examples/hello_world.tc"
 	@echo "  make test"
 	@echo "  make examples"
 

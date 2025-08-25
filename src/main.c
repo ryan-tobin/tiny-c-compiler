@@ -1,13 +1,16 @@
-// src/main.c
+// src/main.c (updated for parser testing)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "lexer.h"
+#include "parser.h"
+#include "ast.h"
 
 void print_usage(const char* program_name) {
     printf("Usage: %s [options] <input_file>\n", program_name);
     printf("Options:\n");
     printf("  --debug-tokens  Print token stream\n");
+    printf("  --debug-ast     Print AST\n");
     printf("  -h, --help      Show this help\n");
 }
 
@@ -19,6 +22,7 @@ int main(int argc, char** argv) {
     
     char* input_file = NULL;
     int debug_tokens = 0;
+    int debug_ast = 0;
     
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
@@ -27,6 +31,8 @@ int main(int argc, char** argv) {
             return 0;
         } else if (strcmp(argv[i], "--debug-tokens") == 0) {
             debug_tokens = 1;
+        } else if (strcmp(argv[i], "--debug-ast") == 0) {
+            debug_ast = 1;
         } else if (argv[i][0] != '-') {
             input_file = argv[i];
         } else {
@@ -41,10 +47,10 @@ int main(int argc, char** argv) {
         return 1;
     }
     
-    printf("TinyC Compiler - Lexer Phase\n");
+    printf("TinyC Compiler - Lexer + Parser Phase\n");
     printf("Processing file: %s\n\n", input_file);
     
-    // Create lexer from file
+    // Phase 1: Lexical Analysis
     lexer_t* lexer = lexer_create_from_file(input_file);
     if (!lexer) {
         fprintf(stderr, "Error: Could not read input file '%s'\n", input_file);
@@ -52,34 +58,45 @@ int main(int argc, char** argv) {
     }
     
     if (debug_tokens) {
+        printf("=== LEXICAL ANALYSIS ===\n");
         lexer_print_tokens(lexer);
-    } else {
-        // Just verify lexing works without printing
-        token_t token;
-        int token_count = 0;
-        int error_count = 0;
-        
-        do {
-            token = lexer_next_token(lexer);
-            token_count++;
-            
-            if (token.type == TOKEN_ERROR) {
-                printf("ERROR at line %d, column %d: %s\n", 
-                       token.line, token.column, 
-                       token.value ? token.value : "Unknown error");
-                error_count++;
-            }
-            
-        } while (token.type != TOKEN_EOF && token.type != TOKEN_ERROR);
-        
-        if (error_count == 0) {
-            printf("✓ Lexical analysis completed successfully!\n");
-            printf("  Total tokens: %d\n", token_count - 1); // -1 for EOF
-        } else {
-            printf("✗ Lexical analysis failed with %d error(s)\n", error_count);
-        }
+        lexer_reset(lexer);
     }
     
+    // Phase 2: Parsing
+    printf("=== PARSING ===\n");
+    parser_t* parser = parser_create(lexer);
+    if (!parser) {
+        fprintf(stderr, "Error: Could not create parser\n");
+        lexer_destroy(lexer);
+        return 1;
+    }
+    
+    ast_node_t* ast = parser_parse_program(parser);
+    
+    if (parser_has_errors(parser)) {
+        printf("✗ Parsing failed with errors:\n");
+        parser_print_errors(parser);
+        
+        if (ast) ast_destroy(ast);
+        parser_destroy(parser);
+        lexer_destroy(lexer);
+        return 1;
+    }
+    
+    printf("✓ Parsing completed successfully!\n\n");
+    
+    if (debug_ast && ast) {
+        printf("=== ABSTRACT SYNTAX TREE ===\n");
+        ast_print(ast, 0);
+        printf("============================\n\n");
+    }
+    
+    // Cleanup
+    if (ast) ast_destroy(ast);
+    parser_destroy(parser);
     lexer_destroy(lexer);
+    
+    printf("✓ Compilation completed successfully (parser phase)\n");
     return 0;
 }
