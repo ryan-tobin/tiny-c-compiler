@@ -1,0 +1,6 @@
+int print(char* str);
+
+int main() {
+    print("Hello, World!");
+    return 0;
+}
