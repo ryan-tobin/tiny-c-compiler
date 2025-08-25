@@ -1,0 +1,40 @@
+<svg viewBox="0 0 200 230" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  
+  <!-- Proper hexagon using polygon for perfect symmetry -->
+  <polygon points="100,10 173.2,50 173.2,130 100,170 26.8,130 26.8,50" 
+           fill="#005A9C" filter="url(#shadow)"/>
+  
+  <!-- Inner hexagon for depth effect -->
+  <polygon points="100,18 167,53 167,127 100,162 33,127 33,53" 
+           fill="#0066B3"/>
+  
+  <!-- The "C" letter - using path for better control -->
+  <path d="M 130 60 Q 90 60, 70 90 Q 60 105, 60 90 Q 60 110, 70 90 Q 90 120, 130 120 Q 115 120, 115 105 Q 115 90, 115 75 Q 115 60, 130 60" 
+        fill="none"/>
+  
+  <!-- Simplified C using text for cleaner look -->
+  <text x="100" y="115" font-family="Arial, sans-serif" font-size="80" 
+        font-weight="700" fill="white" text-anchor="middle">C</text>
+  
+  <!-- Small hexagon with "t" in the C opening -->
+  <g transform="translate(130, 85)">
+    <!-- Mini hexagon with better proportions -->
+    <polygon points="0,-8 6.93,-4 6.93,4 0,8 -6.93,4 -6.93,-4" 
+             fill="white" stroke="#0066B3" stroke-width="1"/>
+    <text x="0" y="3.5" font-family="Arial, sans-serif" font-size="10" 
+          font-weight="bold" fill="#005A9C" text-anchor="middle">t</text>
+  </g>
+  
+  <!-- Text below the hexagon -->
+  <text x="100" y="195" font-family="Arial, sans-serif" font-size="24" 
+        font-weight="600" fill="#005A9C" text-anchor="middle">TinyC</text>
+  
+  <text x="100" y="215" font-family="Arial, sans-serif" font-size="14" 
+        fill="#7BA7CC" text-anchor="middle" letter-spacing="2">COMPILER</text>
+</svg>
