@@ -5,12 +5,14 @@
 #include "lexer.h"
 #include "parser.h"
 #include "ast.h"
+#include "semantic.h"
 
 void print_usage(const char* program_name) {
     printf("Usage: %s [options] <input_file>\n", program_name);
     printf("Options:\n");
     printf("  --debug-tokens  Print token stream\n");
     printf("  --debug-ast     Print AST\n");
+    printf("  --debug-symbols Print symbol table\n");
     printf("  -h, --help      Show this help\n");
 }
 
@@ -23,6 +25,7 @@ int main(int argc, char** argv) {
     char* input_file = NULL;
     int debug_tokens = 0;
     int debug_ast = 0;
+    int debug_symbols = 0;
     
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
@@ -33,6 +36,8 @@ int main(int argc, char** argv) {
             debug_tokens = 1;
         } else if (strcmp(argv[i], "--debug-ast") == 0) {
             debug_ast = 1;
+        } else if (strcmp(argv[i], "--debug-symbols") == 0) {
+            debug_symbols = 1;
         } else if (argv[i][0] != '-') {
             input_file = argv[i];
         } else {
@@ -47,7 +52,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     
-    printf("TinyC Compiler - Lexer + Parser Phase\n");
+    printf("TinyC Compiler - Full Frontend Analysis\n");
     printf("Processing file: %s\n\n", input_file);
     
     // Phase 1: Lexical Analysis
@@ -92,11 +97,45 @@ int main(int argc, char** argv) {
         printf("============================\n\n");
     }
     
+    // Phase 3: Semantic Analysis
+    printf("=== SEMANTIC ANALYSIS ===\n");
+    semantic_analyzer_t* analyzer = semantic_create();
+    if (!analyzer) {
+        fprintf(stderr, "Error: Could not create semantic analyzer\n");
+        ast_destroy(ast);
+        parser_destroy(parser);
+        lexer_destroy(lexer);
+        return 1;
+    }
+    
+    int semantic_success = semantic_analyze(analyzer, ast);
+    
+    if (semantic_has_errors(analyzer)) {
+        printf("✗ Semantic analysis failed with errors:\n");
+        semantic_print_errors(analyzer);
+        semantic_success = 0;
+    } else {
+        printf("✓ Semantic analysis completed successfully!\n");
+    }
+    
+    if (debug_symbols) {
+        printf("\n=== SYMBOL TABLE DEBUG ===\n");
+        printf("(Symbol table debugging not yet implemented)\n");
+        printf("==========================\n");
+    }
+    
     // Cleanup
-    if (ast) ast_destroy(ast);
+    semantic_destroy(analyzer);
+    ast_destroy(ast);
     parser_destroy(parser);
     lexer_destroy(lexer);
     
-    printf("✓ Compilation completed successfully (parser phase)\n");
-    return 0;
+    if (semantic_success) {
+        printf("\n✓ Frontend analysis completed successfully!\n");
+        printf("  Ready for code generation phase.\n");
+        return 0;
+    } else {
+        printf("\n✗ Frontend analysis failed.\n");
+        return 1;
+    }
 }

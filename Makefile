@@ -7,9 +7,9 @@ TEST_DIR = tests
 EXAMPLE_DIR = examples
 BUILD_DIR = build
 
-# Source files (lexer + parser + AST)
-PARSER_SOURCES = $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c $(SRC_DIR)/main.c
-PARSER_OBJECTS = $(PARSER_SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+# Source files (lexer + parser + AST + semantic)
+SEMANTIC_SOURCES = $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c $(SRC_DIR)/semantic.c $(SRC_DIR)/main.c
+SEMANTIC_OBJECTS = $(SEMANTIC_SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Test files
 TEST_LEXER_SOURCES = $(TEST_DIR)/unit/test_lexer.c $(SRC_DIR)/lexer.c
@@ -18,7 +18,10 @@ TEST_LEXER_OBJECTS = $(BUILD_DIR)/tests/unit/test_lexer.o $(BUILD_DIR)/lexer.o
 TEST_PARSER_SOURCES = $(TEST_DIR)/unit/test_parser.c $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c
 TEST_PARSER_OBJECTS = $(BUILD_DIR)/tests/unit/test_parser.o $(BUILD_DIR)/lexer.o $(BUILD_DIR)/ast.o $(BUILD_DIR)/parser.o
 
-.PHONY: all clean test test-lexer test-parser examples debug help
+TEST_SEMANTIC_SOURCES = $(TEST_DIR)/unit/test_semantic.c $(SRC_DIR)/lexer.c $(SRC_DIR)/ast.c $(SRC_DIR)/parser.c $(SRC_DIR)/semantic.c
+TEST_SEMANTIC_OBJECTS = $(BUILD_DIR)/tests/unit/test_semantic.o $(BUILD_DIR)/lexer.o $(BUILD_DIR)/ast.o $(BUILD_DIR)/parser.o $(BUILD_DIR)/semantic.o
+
+.PHONY: all clean test test-lexer test-parser test-semantic examples debug help
 
 all: $(BUILD_DIR)/$(TARGET)
 
@@ -35,12 +38,12 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/tests/unit/%.o: $(TEST_DIR)/unit/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR) -c $< -o $@
 
-# Link main executable (lexer + parser)
-$(BUILD_DIR)/$(TARGET): $(PARSER_OBJECTS) | $(BUILD_DIR)
-	$(CC) $(PARSER_OBJECTS) -o $@ $(LDFLAGS)
+# Link main executable (lexer + parser + semantic)
+$(BUILD_DIR)/$(TARGET): $(SEMANTIC_OBJECTS) | $(BUILD_DIR)
+	$(CC) $(SEMANTIC_OBJECTS) -o $@ $(LDFLAGS)
 
 # Test targets
-test: test-lexer test-parser
+test: test-lexer test-parser test-semantic
 
 test-lexer: $(BUILD_DIR)/test_lexer
 	@echo "Running lexer unit tests..."
@@ -50,11 +53,18 @@ test-parser: $(BUILD_DIR)/test_parser
 	@echo "Running parser unit tests..."
 	./$(BUILD_DIR)/test_parser
 
+test-semantic: $(BUILD_DIR)/test_semantic
+	@echo "Running semantic analysis unit tests..."
+	./$(BUILD_DIR)/test_semantic
+
 $(BUILD_DIR)/test_lexer: $(TEST_LEXER_OBJECTS) | $(BUILD_DIR)
 	$(CC) $(TEST_LEXER_OBJECTS) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/test_parser: $(TEST_PARSER_OBJECTS) | $(BUILD_DIR)
 	$(CC) $(TEST_PARSER_OBJECTS) -o $@ $(LDFLAGS)
+
+$(BUILD_DIR)/test_semantic: $(TEST_SEMANTIC_OBJECTS) | $(BUILD_DIR)
+	$(CC) $(TEST_SEMANTIC_OBJECTS) -o $@ $(LDFLAGS) $(LDFLAGS)
 
 # Test with example programs
 examples: $(BUILD_DIR)/$(TARGET)
@@ -79,14 +89,15 @@ interactive: $(BUILD_DIR)/$(TARGET)
 # Help target
 help:
 	@echo "TinyC Compiler - Available targets:"
-	@echo "  all          - Build the compiler (lexer + parser phase)"
-	@echo "  test         - Run all unit tests"
-	@echo "  test-lexer   - Run lexer unit tests"
-	@echo "  test-parser  - Run parser unit tests"
-	@echo "  examples     - Test parser with example programs"
-	@echo "  debug        - Build with debug symbols and sanitizers"
-	@echo "  clean        - Remove build artifacts"
-	@echo "  help         - Show this help"
+	@echo "  all              - Build the compiler (full frontend)"
+	@echo "  test             - Run all unit tests"
+	@echo "  test-lexer       - Run lexer unit tests"
+	@echo "  test-parser      - Run parser unit tests"
+	@echo "  test-semantic    - Run semantic analysis unit tests"
+	@echo "  examples         - Test semantic analysis with example programs"
+	@echo "  debug            - Build with debug symbols and sanitizers"
+	@echo "  clean            - Remove build artifacts"
+	@echo "  help             - Show this help"
 	@echo ""
 	@echo "Usage examples:"
 	@echo "  make && ./build/tcc examples/hello_world.tc"
